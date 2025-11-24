@@ -16,6 +16,9 @@ pydantic = "^2.7"
 pyyaml = "^6.0"
 loguru = "^0.7"
 typer = {version = "^0.12", extras = ["all"]}
+click = ">=8.1,<8.2"
+hdbscan = "^0.8.36"
+requests = "^2.31"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2"

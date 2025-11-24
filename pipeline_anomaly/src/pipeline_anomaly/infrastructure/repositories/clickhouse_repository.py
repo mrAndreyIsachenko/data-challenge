@@ -20,9 +20,18 @@ class ClickHouseRepository:
             CREATE TABLE IF NOT EXISTS events (
                 event_time DateTime,
                 entity_id UInt64,
+                chain_id UInt16,
+                block_number UInt64,
+                contract_address String,
+                tx_hash String,
                 value Float64,
-                attribute Float64
-            ) ENGINE = MergeTree ORDER BY (event_time, entity_id)
+                attribute Float64,
+                gas_used Float64,
+                calldata_size UInt32
+            ) ENGINE = MergeTree
+            PARTITION BY toDate(event_time)
+            ORDER BY (event_time, entity_id)
+            TTL event_time + INTERVAL 45 DAY
             """,
             """
             CREATE TABLE IF NOT EXISTS aggregates (
@@ -31,7 +40,8 @@ class ClickHouseRepository:
                 window_start DateTime,
                 window_end DateTime,
                 extra Map(String, Float64)
-            ) ENGINE = MergeTree ORDER BY (window_start, metric)
+            ) ENGINE = MergeTree
+            ORDER BY (window_start, metric)
             """,
             """
             CREATE TABLE IF NOT EXISTS anomaly_reports (
@@ -42,7 +52,9 @@ class ClickHouseRepository:
                 score Float64,
                 severity Float64,
                 description String
-            ) ENGINE = MergeTree ORDER BY (generated_at, detector)
+            ) ENGINE = MergeTree
+            ORDER BY (generated_at, detector)
+            TTL generated_at + INTERVAL 90 DAY
             """,
         ]
         with self._factory.connect() as client:
@@ -51,12 +63,25 @@ class ClickHouseRepository:
 
     def ingest_batch(self, batch: RecordBatch) -> None:
         with self._factory.connect() as client:
-            client.insert_dataframe("events", batch.dataframe)
+            client.insert_df("events", batch.dataframe)
 
     def persist_aggregates(self, aggregates: AggregateCollection) -> None:
-        payload = aggregates.as_dict()
+        rows = [
+            (
+                aggregate["metric"],
+                aggregate["value"],
+                datetime.fromisoformat(aggregate["window_start"]),
+                datetime.fromisoformat(aggregate["window_end"]),
+                aggregate["extra"],
+            )
+            for aggregate in aggregates.as_dict()
+        ]
         with self._factory.connect() as client:
-            client.insert_dicts("aggregates", payload)
+            client.insert(
+                "aggregates",
+                rows,
+                column_names=["metric", "value", "window_start", "window_end", "extra"],
+            )
 
     def persist_report(self, report: AnomalyReport) -> None:
         rows = [
@@ -72,7 +97,30 @@ class ClickHouseRepository:
             for anomaly in report.anomalies
         ]
         with self._factory.connect() as client:
-            client.insert_dicts("anomaly_reports", rows)
+            client.insert(
+                "anomaly_reports",
+                [
+                    (
+                        row["generated_at"],
+                        row["window_start"],
+                        row["window_end"],
+                        row["detector"],
+                        row["score"],
+                        row["severity"],
+                        row["description"],
+                    )
+                    for row in rows
+                ],
+                column_names=[
+                    "generated_at",
+                    "window_start",
+                    "window_end",
+                    "detector",
+                    "score",
+                    "severity",
+                    "description",
+                ],
+            )
 
     def read_latest_window(self) -> pd.DataFrame:
         with self._factory.connect() as client:

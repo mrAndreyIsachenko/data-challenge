@@ -3,13 +3,36 @@ clickhouse:
   port: 8123
   database: pipeline
   username: default
-  password: ""
+  password: "demo"
+
+source:
+  type: synthetic
+  kafka:
+    path: data/kafka_mock/events.ndjson
+    batch_size: 10000
+  web3:
+    rpc_url: https://rpc.example.com
+    start_block: 0
+    end_block: 0
 
 dataset:
-  row_count: 100000000
-  batch_size: 500000
+  row_count: 100000
+  batch_size: 50000
   anomaly_ratio: 0.001
   seed: 42
+
+features:
+  windows:
+    - 5m
+    - 1h
+
+quality:
+  dedup_keys:
+    - tx_hash
+  required_columns:
+    - event_time
+    - tx_hash
+    - value
 
 anomaly_detection:
   zscore_threshold: 3.0
@@ -19,8 +42,14 @@ anomaly_detection:
   dbscan:
     eps: 0.7
     min_samples: 15
+  hdbscan:
+    enabled: true
+    min_cluster_size: 30
+    min_samples: 5
 
 alerting:
   enabled: true
   threshold_score: 0.8
   sink: stdout
+  webhook_url: ""
+  channel: "#alerts"

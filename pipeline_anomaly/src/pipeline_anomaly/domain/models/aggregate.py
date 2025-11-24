@@ -20,16 +20,15 @@ class AggregateCollection:
 
     aggregates: tuple[Aggregate, ...]
 
-    def as_dict(self) -> list[dict[str, float | str]]:
-        payload: list[dict[str, float | str]] = []
+    def as_dict(self) -> list[dict[str, object]]:
+        payload: list[dict[str, object]] = []
         for aggregate in self.aggregates:
-            row: dict[str, float | str] = {
+            row: dict[str, object] = {
                 "metric": aggregate.metric,
                 "value": aggregate.value,
                 "window_start": aggregate.window_start.isoformat(),
                 "window_end": aggregate.window_end.isoformat(),
+                "extra": dict(aggregate.extra) if aggregate.extra else {},
             }
-            if aggregate.extra:
-                row.update({f"extra_{key}": val for key, val in aggregate.extra.items()})
             payload.append(row)
         return payload

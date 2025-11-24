@@ -1,0 +1,124 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "editorType": "sql",
+          "rawSql": "SELECT toStartOfHour(event_time) AS ts, count() AS value FROM pipeline.events WHERE event_time >= now() - INTERVAL 1 DAY GROUP BY ts ORDER BY ts",
+          "refId": "A"
+        },
+        {
+          "editorType": "sql",
+          "rawSql": "SELECT toStartOfHour(event_time) AS ts, avg(value) AS value FROM pipeline.events WHERE event_time >= now() - INTERVAL 1 DAY GROUP BY ts ORDER BY ts",
+          "refId": "B"
+        }
+      ],
+      "title": "Events count & mean (24h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "targets": [
+        {
+          "editorType": "sql",
+          "rawSql": "SELECT chain_id, count() AS events FROM pipeline.events WHERE event_time >= now() - INTERVAL 1 DAY GROUP BY chain_id ORDER BY events DESC",
+          "refId": "A"
+        }
+      ],
+      "title": "Chain heatmap (counts)",
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {}
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 3,
+      "targets": [
+        {
+          "editorType": "sql",
+          "rawSql": "SELECT generated_at AS ts, max(severity) AS value FROM pipeline.anomaly_reports WHERE generated_at >= now() - INTERVAL 1 DAY GROUP BY ts ORDER BY ts",
+          "refId": "A"
+        }
+      ],
+      "title": "Anomaly severity timeline",
+      "type": "timeseries"
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [
+    "pipeline",
+    "anomaly"
+  ],
+  "templating": {
+    "list": []
+  },
+  "timezone": "",
+  "title": "Pipeline Anomaly Overview",
+  "version": 2
+}

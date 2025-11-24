@@ -44,3 +44,8 @@ class AnomalyDetector(Protocol):
 class AlertSink(Protocol):
     def send(self, report: AnomalyReport) -> None:
         ...
+
+
+class DataQualityChecker(Protocol):
+    def validate(self, batch: RecordBatch) -> RecordBatch:
+        ...
